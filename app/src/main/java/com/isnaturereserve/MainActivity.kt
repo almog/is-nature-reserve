@@ -14,7 +14,9 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.isnaturereserve.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -102,9 +104,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if (rotation != null) {
             sensorManager.registerListener(this, rotation, SensorManager.SENSOR_DELAY_UI)
         }
-        if (index != null && state is UiState.PermissionPermanentlyDenied &&
-            locationHelper.hasAnyLocationPermission()
-        ) {
+        // Re-enter the flow when the user returns from system settings (granted permission
+        // or enabled location). Without this, the screen stays stuck on the previous error.
+        if (index != null && (state is UiState.PermissionPermanentlyDenied ||
+                state is UiState.LocationDisabled)) {
             start()
         }
     }
@@ -138,22 +141,27 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun startLocationUpdates() {
         locationJob?.cancel()
         render(UiState.WaitingForFix)
+        // repeatOnLifecycle(STARTED) cancels the upstream flow when the activity goes
+        // into the background, which stops GPS updates. lifecycleScope alone would keep
+        // the fused location callback firing until DESTROYED — wasted battery.
         locationJob = lifecycleScope.launch {
-            locationHelper.locationUpdates().collect { result ->
-                val newState: UiState = when (result) {
-                    is LocationResult.PermissionMissing -> UiState.NeedsPermission
-                    is LocationResult.LocationDisabled -> UiState.LocationDisabled
-                    is LocationResult.Error -> UiState.FixFailed(result.message)
-                    is LocationResult.Ok -> {
-                        val loc = result.location
-                        val idx = index
-                        val matches = idx?.query(loc.longitude, loc.latitude).orEmpty()
-                        val exit = if (matches.isNotEmpty()) idx?.nearestExit(loc.longitude, loc.latitude) else null
-                        val nearby = if (matches.isEmpty()) idx?.nearestReserve(loc.longitude, loc.latitude) else null
-                        UiState.HasFix(matches, loc.latitude, loc.longitude, loc.accuracy, exit, nearby)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                locationHelper.locationUpdates().collect { result ->
+                    val newState: UiState = when (result) {
+                        is LocationResult.PermissionMissing -> UiState.NeedsPermission
+                        is LocationResult.LocationDisabled -> UiState.LocationDisabled
+                        is LocationResult.Error -> UiState.FixFailed(result.message)
+                        is LocationResult.Ok -> {
+                            val loc = result.location
+                            val idx = index
+                            val matches = idx?.query(loc.longitude, loc.latitude).orEmpty()
+                            val exit = if (matches.isNotEmpty()) idx?.nearestExit(loc.longitude, loc.latitude) else null
+                            val nearby = if (matches.isEmpty()) idx?.nearestReserve(loc.longitude, loc.latitude) else null
+                            UiState.HasFix(matches, loc.latitude, loc.longitude, loc.accuracy, exit, nearby)
+                        }
                     }
+                    render(newState)
                 }
-                render(newState)
             }
         }
     }
