@@ -11,6 +11,12 @@ When you are inside a reserve, the app shows:
 
 When you are outside any reserve, the app shows the name and distance of the nearest one, with a compass arrow pointing toward it.
 
+## Screenshots
+
+| Inside a reserve | Outside any reserve |
+|:---:|:---:|
+| <img src="docs/screenshots/inside.jpg" width="300" alt="Inside Mazuq Ha-Zinnim nature reserve, 1.1 km to the nearest exit"> | <img src="docs/screenshots/outside.jpg" width="300" alt="Outside any reserve, 895 m from Mizla'ot Hamakhtesh Hagadol"> |
+
 ## Data
 
 Reserve and national park boundaries come from the [INPA Boundaries](https://github.com/almog/inpa-boundaries) dataset, originally published by the Israel Nature and Parks Authority.
