@@ -1,5 +1,8 @@
 <resources>
-    <style name="Theme.IsNatureReserve" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Light-only: the text colors in colors.xml are designed for a light surface,
+         and there is no values-night override. DayNight would render dark text on a
+         dark surface in dark mode. -->
+    <style name="Theme.IsNatureReserve" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
